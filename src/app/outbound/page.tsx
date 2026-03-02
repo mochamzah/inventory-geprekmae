@@ -45,10 +45,27 @@ export default function OutboundPage() {
         e.preventDefault();
         setSubmitting(true);
 
+        // Ambil harga dari transaksi inbound terakhir untuk menghitung Nominal Beban
+        const { data: lastInbound } = await supabase
+            .from('transactions')
+            .select('price, quantity')
+            .eq('item_id', formData.item_id)
+            .eq('type', 'in')
+            .order('timestamp', { ascending: false })
+            .limit(1)
+            .single();
+
+        let calculatedPrice = null;
+        if (lastInbound && lastInbound.quantity > 0 && lastInbound.price > 0) {
+            const unitPrice = lastInbound.price / lastInbound.quantity;
+            calculatedPrice = unitPrice * Number(formData.quantity);
+        }
+
         const { error } = await supabase.from('transactions').insert([{
             item_id: formData.item_id,
             type: 'out',
             quantity: Number(formData.quantity),
+            price: calculatedPrice,
             reason: formData.reason,
             notes: formData.notes,
             pic: formData.pic,

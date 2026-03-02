@@ -1,18 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
-import { Search, ArrowUpFromLine, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { Search, ArrowUpFromLine, Calendar as CalendarIcon, Loader2, Calculator, BadgeDollarSign } from "lucide-react";
 
 export default function HistoryOutboundPage() {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+
+    // Filter states
     const [dateFilter, setDateFilter] = useState("all");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
 
     useEffect(() => {
+        // Prevent fetching if 'custom' is selected but both dates are not provided
+        if (dateFilter === 'custom' && (!startDate || !endDate)) {
+            return;
+        }
         fetchTransactions();
-    }, [dateFilter]);
+    }, [dateFilter, startDate, endDate]);
 
     async function fetchTransactions() {
         setLoading(true);
@@ -29,6 +37,17 @@ export default function HistoryOutboundPage() {
         } else if (dateFilter === 'week') {
             const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
             query = query.gte('timestamp', lastWeek);
+        } else if (dateFilter === 'month') {
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            query = query.gte('timestamp', startOfMonth);
+        } else if (dateFilter === 'custom' && startDate && endDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+
+            query = query.gte('timestamp', start.toISOString()).lte('timestamp', end.toISOString());
         }
 
         const { data, error } = await query;
@@ -49,6 +68,14 @@ export default function HistoryOutboundPage() {
 
         return searchMatch;
     });
+
+    const totalQuantity = useMemo(() => {
+        return filteredTransactions.reduce((sum, t) => sum + (Number(t.quantity) || 0), 0);
+    }, [filteredTransactions]);
+
+    const totalNominal = useMemo(() => {
+        return filteredTransactions.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+    }, [filteredTransactions]);
 
     return (
         <div className="space-y-6">
@@ -72,17 +99,72 @@ export default function HistoryOutboundPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="relative w-full sm:w-40">
+                    <div className="relative w-full sm:w-48">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><CalendarIcon className="h-4 w-4 text-gray-400" /></div>
                         <select
                             className="block w-full pl-9 pr-8 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm appearance-none"
                             value={dateFilter}
-                            onChange={(e) => setDateFilter(e.target.value)}
+                            onChange={(e) => {
+                                setDateFilter(e.target.value);
+                                if (e.target.value !== 'custom') {
+                                    setStartDate('');
+                                    setEndDate('');
+                                }
+                            }}
                         >
                             <option value="all">Semua Waktu</option>
                             <option value="today">Hari Ini</option>
                             <option value="week">Minggu Ini</option>
+                            <option value="month">Bulan Ini</option>
+                            <option value="custom">Pilih Tanggal</option>
                         </select>
+                    </div>
+                </div>
+            </div>
+
+            {dateFilter === 'custom' && (
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <span className="text-sm font-medium text-gray-600">Dari:</span>
+                        <input
+                            type="date"
+                            className="block w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <span className="text-sm font-medium text-gray-600">Sampai:</span>
+                        <input
+                            type="date"
+                            className="block w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            min={startDate}
+                        />
+                    </div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                    <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+                        <Calculator className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">Total Kuantitas Keluar (Pcs/Kg/Liter)</p>
+                        <p className="text-2xl font-bold text-gray-900">{totalQuantity.toLocaleString("id-ID")}</p>
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                    <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+                        <BadgeDollarSign className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">Total Nominal Produksi (Rp)</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalNominal)}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -94,14 +176,15 @@ export default function HistoryOutboundPage() {
                             <tr>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Barang</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah Keluar</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nominal Beban (Rp)</th>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Satuan</th>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">PIC (Petugas)</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
                             {loading ? (
-                                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-red-500" />Memuat data riwayat...</td></tr>
+                                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-red-500" />Memuat data riwayat...</td></tr>
                             ) : filteredTransactions.map((t) => (
                                 <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -115,6 +198,9 @@ export default function HistoryOutboundPage() {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm font-extrabold text-red-600 bg-red-50 inline-block px-2.5 py-1 rounded-lg">-{t.quantity}</div>
                                     </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                        {t.price ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(t.price) : '-'}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{t.items?.unit}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="text-sm font-medium text-gray-700">{t.pic}</span>
@@ -122,7 +208,7 @@ export default function HistoryOutboundPage() {
                                 </tr>
                             ))}
                             {!loading && filteredTransactions.length === 0 && (
-                                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">Tidak ada riwayat barang keluar yang ditemukan.</td></tr>
+                                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500 text-sm">Tidak ada riwayat barang keluar yang ditemukan.</td></tr>
                             )}
                         </tbody>
                     </table>
