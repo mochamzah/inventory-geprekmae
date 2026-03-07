@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { Search, ArrowDownToLine, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 
@@ -50,6 +50,14 @@ export default function HistoryInboundPage() {
         return searchMatch;
     });
 
+    const totalQuantity = useMemo(() => {
+        return filteredTransactions.reduce((sum, t) => sum + (Number(t.quantity) || 0), 0);
+    }, [filteredTransactions]);
+
+    const totalNominal = useMemo(() => {
+        return filteredTransactions.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+    }, [filteredTransactions]);
+
     return (
         <div className="space-y-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -87,6 +95,23 @@ export default function HistoryInboundPage() {
                 </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                    <div className="p-3 bg-green-50 text-green-600 rounded-xl"><ArrowDownToLine className="h-6 w-6" /></div>
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">Total Kuantitas Masuk</p>
+                        <p className="text-2xl font-bold text-gray-900">{totalQuantity.toLocaleString("id-ID")}</p>
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                    <div className="p-3 bg-green-50 text-green-600 rounded-xl"><ArrowDownToLine className="h-6 w-6" /></div>
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">Total Nominal Pembelian (Rp)</p>
+                        <p className="text-2xl font-bold text-gray-900">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalNominal)}</p>
+                    </div>
+                </div>
+            </div>
+
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -95,13 +120,14 @@ export default function HistoryInboundPage() {
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Barang</th>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah Pembelanjaan (Rp)</th>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Satuan</th>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">PIC (Petugas)</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
                             {loading ? (
-                                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-green-500" />Memuat data riwayat...</td></tr>
+                                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-green-500" />Memuat data riwayat...</td></tr>
                             ) : filteredTransactions.map((t) => (
                                 <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -115,6 +141,9 @@ export default function HistoryInboundPage() {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm font-extrabold text-green-600 bg-green-50 inline-block px-2.5 py-1 rounded-lg">+{t.quantity}</div>
                                     </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                        {t.price ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(t.price) : '-'}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{t.items?.unit}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="text-sm font-medium text-gray-700">{t.pic}</span>
@@ -122,7 +151,7 @@ export default function HistoryInboundPage() {
                                 </tr>
                             ))}
                             {!loading && filteredTransactions.length === 0 && (
-                                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">Tidak ada riwayat barang masuk yang ditemukan.</td></tr>
+                                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500 text-sm">Tidak ada riwayat barang masuk yang ditemukan.</td></tr>
                             )}
                         </tbody>
                     </table>

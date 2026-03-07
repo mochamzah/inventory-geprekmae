@@ -87,8 +87,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Transaksi Terbaru</h2>
             <div className="text-sm font-medium text-gray-500 space-x-4">
-              <Link href="/history/inbound" className="hover:text-gray-900">Masuk</Link>
-              <Link href="/history/outbound" className="hover:text-gray-900">Keluar</Link>
+              <Link href="/history" className="hover:text-gray-900">Riwayat</Link>
             </div>
           </div>
           <div className="overflow-x-auto">

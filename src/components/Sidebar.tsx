@@ -16,8 +16,7 @@ export default function Sidebar({ mobile }: SidebarProps) {
         { name: "📦 Master Barang", href: "/items", icon: Package },
         { name: "📥 Barang Masuk", href: "/inbound", icon: ArrowDownToLine },
         { name: "📤 Barang Keluar", href: "/outbound", icon: ArrowUpFromLine },
-        { name: "📜 Riwayat Masuk", href: "/history/inbound", icon: History },
-        { name: "📜 Riwayat Keluar", href: "/history/outbound", icon: History },
+        { name: "📜 Riwayat", href: "/history", icon: History },
     ];
 
     if (mobile) {
@@ -29,11 +28,13 @@ export default function Sidebar({ mobile }: SidebarProps) {
                         <Link
                             key={item.name}
                             href={item.href}
-                            className={`flex flex-col items-center justify-center w-full h-full text-xs font-medium transition-colors ${isActive ? "text-red-600" : "text-gray-500 hover:text-gray-900"
+                            title={item.name}
+                            aria-label={item.name}
+                            className={`flex items-center justify-center w-full h-full transition-colors ${isActive ? "text-red-600" : "text-gray-500 hover:text-gray-900"
                                 }`}
                         >
-                            <item.icon className={`h-5 w-5 mb-1 ${isActive ? "text-red-600" : "text-gray-400"}`} />
-                            {item.name}
+                            <item.icon className={`h-6 w-6 ${isActive ? "text-red-600" : "text-gray-400"}`} aria-hidden="true" />
+                            <span className="sr-only">{item.name}</span>
                         </Link>
                     );
                 })}

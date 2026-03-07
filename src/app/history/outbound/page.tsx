@@ -173,18 +173,19 @@ export default function HistoryOutboundPage() {
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
-                            <tr>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Barang</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah Keluar</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nominal Beban (Rp)</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Satuan</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">PIC (Petugas)</th>
-                            </tr>
+                                <tr>
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Barang</th>
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah Keluar</th>
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nominal Beban (Rp)</th>
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Satuan</th>
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Penggunaan</th>
+                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">PIC (Petugas)</th>
+                                </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
                             {loading ? (
-                                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-red-500" />Memuat data riwayat...</td></tr>
+                                    <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-red-500" />Memuat data riwayat...</td></tr>
                             ) : filteredTransactions.map((t) => (
                                 <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -202,13 +203,23 @@ export default function HistoryOutboundPage() {
                                         {t.price ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(t.price) : '-'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{t.items?.unit}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                        {(() => {
+                                            const usage = t.usage || (t.reason === 'Waste' ? 'waste' : 'produksi');
+                                            return usage === 'waste' ? (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-red-50 text-red-700">Waste</span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-50 text-green-700">Produksi</span>
+                                            );
+                                        })()}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="text-sm font-medium text-gray-700">{t.pic}</span>
                                     </td>
                                 </tr>
                             ))}
                             {!loading && filteredTransactions.length === 0 && (
-                                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500 text-sm">Tidak ada riwayat barang keluar yang ditemukan.</td></tr>
+                                <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500 text-sm">Tidak ada riwayat barang keluar yang ditemukan.</td></tr>
                             )}
                         </tbody>
                     </table>

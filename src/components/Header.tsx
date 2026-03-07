@@ -1,10 +1,14 @@
 "use client";
 
+import Link from 'next/link';
 import { Bell, User } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from '@/components/SupabaseAuthProvider';
 
 export default function Header() {
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, signOut } = useAuth();
 
     const getPageTitle = () => {
         switch (pathname) {
@@ -20,9 +24,16 @@ export default function Header() {
                 return "Riwayat Masuk";
             case "/history/outbound":
                 return "Riwayat Keluar";
+            case "/history":
+                return "Riwayat";
             default:
                 return "Dashboard";
         }
+    };
+
+    const handleSignOut = async () => {
+        await signOut();
+        router.push('/');
     };
 
     return (
@@ -37,12 +48,19 @@ export default function Header() {
                     </button>
 
                     <div className="flex items-center">
-                        <button className="flex bg-white text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-                            <span className="sr-only">Open user menu</span>
-                            <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                                <User className="h-5 w-5" />
+                        {user ? (
+                            <div className="flex items-center gap-3">
+                                <div className="text-sm text-gray-700">{user.email}</div>
+                                <button onClick={handleSignOut} className="px-3 py-1 text-sm bg-gray-100 rounded-md">Keluar</button>
                             </div>
-                        </button>
+                        ) : (
+                            <Link href="/login" className="flex bg-white text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+                                <span className="sr-only">Open user menu</span>
+                                <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+                                    <User className="h-5 w-5" />
+                                </div>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>

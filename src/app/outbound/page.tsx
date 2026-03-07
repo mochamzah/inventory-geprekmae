@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { ArrowUpFromLine, Package, AlertCircle, Loader2 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import ItemSearchSelect from '@/components/ItemSearchSelect';
 
 interface Item {
     id: string;
@@ -21,6 +22,7 @@ export default function OutboundPage() {
 
     const [formData, setFormData] = useState({
         item_id: "",
+        item_label: "",
         quantity: "",
         reason: "Usage",
         notes: "",
@@ -90,7 +92,7 @@ export default function OutboundPage() {
     const selectedItem = items.find((item) => item.id === formData.item_id);
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
             <Toaster position="top-right" />
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
@@ -107,19 +109,13 @@ export default function OutboundPage() {
                             <label className="block text-sm font-medium text-gray-700">Pilih Barang <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Package className="h-5 w-5 text-gray-400" /></div>
-                                <select
-                                    name="item_id"
-                                    required
-                                    value={formData.item_id}
-                                    onChange={handleChange}
+                                <ItemSearchSelect
+                                    items={items}
+                                    selectedId={formData.item_id}
+                                    onSelect={(id, label) => setFormData((prev) => ({ ...prev, item_id: id, item_label: label }))}
+                                    placeholder={loadingItems ? 'Memuat barang...' : 'Ketik untuk mencari barang...'}
                                     disabled={loadingItems}
-                                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-orange-500 sm:text-sm appearance-none"
-                                >
-                                    <option value="" disabled>{loadingItems ? 'Memuat barang...' : 'Pilih barang...'}</option>
-                                    {items.map((item) => (
-                                        <option key={item.id} value={item.id}>{item.name} - Stok: {item.current_stock} {item.unit}</option>
-                                    ))}
-                                </select>
+                                />
                             </div>
                         </div>
 

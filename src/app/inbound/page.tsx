@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Package, Loader2 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import ItemSearchSelect from '@/components/ItemSearchSelect';
 
 interface Item {
     id: string;
@@ -19,6 +20,7 @@ export default function InboundPage() {
 
     const [formData, setFormData] = useState({
         item_id: "",
+        item_label: "",
         quantity: "",
         price: "",
         supplier: "",
@@ -44,11 +46,16 @@ export default function InboundPage() {
         e.preventDefault();
         setSubmitting(true);
 
+        // Treat `formData.price` as harga satuan (per unit). Store total price = harga_satuan * quantity.
+        const qty = Number(formData.quantity) || 0;
+        const unitPrice = Number(formData.price) || 0;
+        const totalPrice = unitPrice * qty;
+
         const { error } = await supabase.from('transactions').insert([{
             item_id: formData.item_id,
             type: 'in',
-            quantity: Number(formData.quantity),
-            price: Number(formData.price),
+            quantity: qty,
+            price: totalPrice,
             supplier: formData.supplier,
             notes: formData.notes,
             pic: formData.pic,
@@ -72,7 +79,7 @@ export default function InboundPage() {
     };
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
             <Toaster position="top-right" />
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 bg-gray-50/50">
@@ -86,17 +93,13 @@ export default function InboundPage() {
                             <label className="block text-sm font-medium text-gray-700">Pilih Barang <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Package className="h-5 w-5 text-gray-400" /></div>
-                                <select
-                                    name="item_id"
-                                    required
-                                    value={formData.item_id}
-                                    onChange={handleChange}
+                                <ItemSearchSelect
+                                    items={items}
+                                    selectedId={formData.item_id}
+                                    onSelect={(id, label) => setFormData((prev) => ({ ...prev, item_id: id, item_label: label }))}
+                                    placeholder={loadingItems ? 'Memuat barang...' : 'Ketik untuk mencari barang...'}
                                     disabled={loadingItems}
-                                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-red-500 sm:text-sm appearance-none"
-                                >
-                                    <option value="" disabled>{loadingItems ? 'Memuat barang...' : 'Pilih barang...'}</option>
-                                    {items.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.category})</option>)}
-                                </select>
+                                />
                             </div>
                         </div>
 
@@ -111,8 +114,9 @@ export default function InboundPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-gray-700">Total Harga (Rp) <span className="text-red-500">*</span></label>
-                                <input type="number" name="price" required placeholder="Contoh: 50000" value={formData.price} onChange={handleChange} className="block w-full px-3 py-2.5 border border-gray-200 rounded-xl sm:text-sm text-gray-900" />
+                                <label className="block text-sm font-medium text-gray-700">Harga Satuan (Rp) <span className="text-red-500">*</span></label>
+                                <input type="number" name="price" required placeholder="Contoh: 5000" value={formData.price} onChange={handleChange} className="block w-full px-3 py-2.5 border border-gray-200 rounded-xl sm:text-sm text-gray-900" />
+                                <p className="text-xs text-gray-500">Masukkan harga per satuan (per Kg / per Liter / per Ekor). Total harga akan dihitung otomatis saat menyimpan.</p>
                             </div>
                         </div>
 
