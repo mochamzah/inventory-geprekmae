@@ -68,6 +68,7 @@ export default function InboundPage() {
             toast.success("Barang masuk berhasil disimpan ke database!");
             setFormData({
                 item_id: "",
+                item_label: "",
                 quantity: "",
                 price: "",
                 supplier: "",

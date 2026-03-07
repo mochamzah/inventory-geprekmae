@@ -80,6 +80,7 @@ export default function OutboundPage() {
             toast.success("Barang keluar berhasil disimpan ke database!");
             setFormData({
                 item_id: "",
+                item_label: "",
                 quantity: "",
                 reason: "Usage",
                 notes: "",
