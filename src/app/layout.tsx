@@ -22,28 +22,28 @@ export default function RootLayout({
     <html lang="id">
       <body className={`${inter.className} bg-gray-50 text-gray-900`}>
         <SupabaseAuthProvider>
-        <div className="flex h-screen overflow-hidden">
-          {/* Sidebar for Desktop */}
-          <div className="hidden md:flex md:w-64 md:flex-col">
-            <ConditionalSidebar />
+          <div className="flex h-screen overflow-hidden">
+            {/* Sidebar for Desktop */}
+            <div className="hidden md:flex md:w-64 md:flex-col">
+              <ConditionalSidebar />
+            </div>
+
+            {/* Main content area */}
+            <div className="flex flex-col flex-1 w-0 overflow-hidden">
+              <Header />
+              <main className="flex-1 relative overflow-y-auto focus:outline-none pb-24 md:pb-0">
+                <div className="py-6 px-4 sm:px-6 md:px-8">
+                  {/* Auth guard prevents unauthenticated access to protected pages */}
+                  <AuthGuard>{children}</AuthGuard>
+                </div>
+              </main>
+            </div>
           </div>
 
-          {/* Main content area */}
-          <div className="flex flex-col flex-1 w-0 overflow-hidden">
-            <Header />
-            <main className="flex-1 relative overflow-y-auto focus:outline-none pb-16 md:pb-0">
-              <div className="py-6 px-4 sm:px-6 md:px-8 h-full">
-                {/* Auth guard prevents unauthenticated access to protected pages */}
-                <AuthGuard>{children}</AuthGuard>
-              </div>
-            </main>
+          {/* Bottom Navigation for Mobile */}
+          <div className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around">
+            <ConditionalSidebar mobile />
           </div>
-        </div>
-
-        {/* Bottom Navigation for Mobile */}
-        <div className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around">
-          <ConditionalSidebar mobile />
-        </div>
         </SupabaseAuthProvider>
       </body>
     </html>
