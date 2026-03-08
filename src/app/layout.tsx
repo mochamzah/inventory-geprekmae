@@ -9,7 +9,7 @@ import AuthGuard from '@/components/AuthGuard';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Ayam Geprek Inventory",
+  title: "Geprek Mae Inventory",
   description: "Sistem Manajemen Stok Ayam Geprek",
 };
 
@@ -40,7 +40,7 @@ export default function RootLayout({
             </div>
           </div>
 
-          <div className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around">
+          <div className="md:hidden fixed bottom-0 w-full z-20">
             <ConditionalSidebar mobile />
           </div>
         </SupabaseAuthProvider>

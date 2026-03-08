@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
-import { Search, ArrowUpFromLine, Calendar as CalendarIcon, Loader2, Calculator, BadgeDollarSign } from "lucide-react";
+import { Search, ArrowUpFromLine, Calendar as CalendarIcon, Loader2, Calculator, BadgeDollarSign, Download } from "lucide-react";
+import { exportToCsv, formatDateForCsv, formatCurrencyForCsv, getPeriodLabel } from "@/lib/exportCsv";
 
 export default function HistoryOutboundPage() {
     const [transactions, setTransactions] = useState<any[]>([]);
@@ -77,32 +78,69 @@ export default function HistoryOutboundPage() {
         return filteredTransactions.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
     }, [filteredTransactions]);
 
+    function handleExportCsv() {
+        let period = getPeriodLabel(dateFilter);
+        if (dateFilter === 'custom' && startDate && endDate) {
+            period = `${startDate}_sd_${endDate}`;
+        }
+        const filename = `Riwayat-Keluar_${period}.csv`;
+        const headers = ['Tanggal', 'Nama Barang', 'Jumlah Keluar', 'Nominal Beban (Rp)', 'Satuan', 'Penggunaan', 'PIC'];
+        const rows = filteredTransactions.map((t) => {
+            const usage = t.usage || (t.reason === 'Waste' ? 'waste' : 'produksi');
+            return [
+                formatDateForCsv(t.timestamp),
+                t.items?.name || 'Unknown',
+                t.quantity,
+                formatCurrencyForCsv(t.price),
+                t.items?.unit || '',
+                usage === 'waste' ? 'Waste' : 'Produksi',
+                t.pic || '-',
+            ];
+        });
+
+        // Add summary row
+        rows.push([]);
+        rows.push(['TOTAL', '', totalQuantity, formatCurrencyForCsv(totalNominal), '', '', '']);
+
+        exportToCsv(filename, headers, rows);
+    }
+
     return (
-        <div className="space-y-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-red-50 text-red-600 rounded-xl"><ArrowUpFromLine className="h-6 w-6" /></div>
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900">Riwayat Keluar</h1>
-                        <p className="text-sm text-gray-500">Log pemakaian bahan dari database Supabase.</p>
+        <div className="space-y-4">
+            <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-red-50 text-red-600 rounded-xl flex-shrink-0"><ArrowUpFromLine className="h-5 w-5" /></div>
+                        <div className="min-w-0">
+                            <h1 className="text-lg font-bold text-gray-900 truncate">Riwayat Keluar</h1>
+                            <p className="text-xs text-gray-500">Log pemakaian bahan / waste</p>
+                        </div>
                     </div>
+                    <button
+                        onClick={handleExportCsv}
+                        disabled={loading || filteredTransactions.length === 0}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow-md hover:from-red-600 hover:to-rose-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-sm flex-shrink-0"
+                    >
+                        <Download className="h-4 w-4" />
+                        <span className="hidden sm:inline">Simpan CSV</span>
+                    </button>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                    <div className="relative w-full sm:w-64">
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-1">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>
                         <input
                             type="text"
-                            className="block w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm"
+                            className="block w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
                             placeholder="Cari barang, catatan, PIC..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="relative w-full sm:w-48">
+                    <div className="relative w-full sm:w-44 flex-shrink-0">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><CalendarIcon className="h-4 w-4 text-gray-400" /></div>
                         <select
-                            className="block w-full pl-9 pr-8 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm appearance-none"
+                            className="block w-full pl-9 pr-8 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm appearance-none"
                             value={dateFilter}
                             onChange={(e) => {
                                 setDateFilter(e.target.value);
@@ -173,19 +211,19 @@ export default function HistoryOutboundPage() {
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
-                                <tr>
-                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
-                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Barang</th>
-                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah Keluar</th>
-                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nominal Beban (Rp)</th>
-                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Satuan</th>
-                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Penggunaan</th>
-                                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">PIC (Petugas)</th>
-                                </tr>
+                            <tr>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Barang</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Jumlah Keluar</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nominal Beban (Rp)</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Satuan</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Penggunaan</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">PIC (Petugas)</th>
+                            </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
                             {loading ? (
-                                    <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-red-500" />Memuat data riwayat...</td></tr>
+                                <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-red-500" />Memuat data riwayat...</td></tr>
                             ) : filteredTransactions.map((t) => (
                                 <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">

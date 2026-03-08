@@ -50,17 +50,21 @@ export default function OutboundPage() {
             return;
         }
 
+        // Fetch ALL inbound transactions for this item to calculate weighted average
         const { data } = await supabase
             .from('transactions')
             .select('price, quantity')
             .eq('item_id', itemId)
-            .eq('type', 'in')
-            .order('timestamp', { ascending: false })
-            .limit(1)
-            .single();
+            .eq('type', 'in');
 
-        if (data && data.quantity > 0 && (data.price || 0) > 0) {
-            setUnitPrice((data.price || 0) / data.quantity);
+        if (data && data.length > 0) {
+            const totalValue = data.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+            const totalQty = data.reduce((sum, t) => sum + (Number(t.quantity) || 0), 0);
+            if (totalQty > 0 && totalValue > 0) {
+                setUnitPrice(totalValue / totalQty);
+            } else {
+                setUnitPrice(null);
+            }
         } else {
             setUnitPrice(null);
         }

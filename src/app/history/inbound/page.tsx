@@ -2,17 +2,23 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
-import { Search, ArrowDownToLine, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { Search, ArrowDownToLine, Calendar as CalendarIcon, Loader2, Download } from "lucide-react";
+import { exportToCsv, formatDateForCsv, formatCurrencyForCsv, getPeriodLabel } from "@/lib/exportCsv";
 
 export default function HistoryInboundPage() {
     const [transactions, setTransactions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [dateFilter, setDateFilter] = useState("all");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
 
     useEffect(() => {
+        if (dateFilter === 'custom' && (!startDate || !endDate)) {
+            return;
+        }
         fetchTransactions();
-    }, [dateFilter]);
+    }, [dateFilter, startDate, endDate]);
 
     async function fetchTransactions() {
         setLoading(true);
@@ -29,6 +35,15 @@ export default function HistoryInboundPage() {
         } else if (dateFilter === 'week') {
             const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
             query = query.gte('timestamp', lastWeek);
+        } else if (dateFilter === 'month') {
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            query = query.gte('timestamp', startOfMonth);
+        } else if (dateFilter === 'custom' && startDate && endDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            query = query.gte('timestamp', start.toISOString()).lte('timestamp', end.toISOString());
         }
 
         const { data, error } = await query;
@@ -58,42 +73,105 @@ export default function HistoryInboundPage() {
         return filteredTransactions.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
     }, [filteredTransactions]);
 
+    function handleExportCsv() {
+        const period = getPeriodLabel(dateFilter);
+        const filename = `Riwayat-Masuk_${period}.csv`;
+        const headers = ['Tanggal', 'Nama Barang', 'Jumlah', 'Harga Pembelian (Rp)', 'Satuan', 'Supplier', 'PIC'];
+        const rows = filteredTransactions.map((t) => [
+            formatDateForCsv(t.timestamp),
+            t.items?.name || 'Unknown',
+            t.quantity,
+            formatCurrencyForCsv(t.price),
+            t.items?.unit || '',
+            t.supplier || '-',
+            t.pic || '-',
+        ]);
+
+        // Add summary row
+        rows.push([]);
+        rows.push(['TOTAL', '', totalQuantity, formatCurrencyForCsv(totalNominal), '', '', '']);
+
+        exportToCsv(filename, headers, rows);
+    }
+
     return (
-        <div className="space-y-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-green-50 text-green-600 rounded-xl"><ArrowDownToLine className="h-6 w-6" /></div>
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900">Riwayat Masuk</h1>
-                        <p className="text-sm text-gray-500">Log pembelian bahan baku dari database Supabase.</p>
+        <div className="space-y-4">
+            <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-green-50 text-green-600 rounded-xl flex-shrink-0"><ArrowDownToLine className="h-5 w-5" /></div>
+                        <div className="min-w-0">
+                            <h1 className="text-lg font-bold text-gray-900 truncate">Riwayat Masuk</h1>
+                            <p className="text-xs text-gray-500">Log pembelian bahan baku</p>
+                        </div>
                     </div>
+                    <button
+                        onClick={handleExportCsv}
+                        disabled={loading || filteredTransactions.length === 0}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow-md hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-sm flex-shrink-0"
+                    >
+                        <Download className="h-4 w-4" />
+                        <span className="hidden sm:inline">Simpan CSV</span>
+                    </button>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                    <div className="relative w-full sm:w-64">
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-1">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>
                         <input
                             type="text"
-                            className="block w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 sm:text-sm"
+                            className="block w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                             placeholder="Cari barang, supplier, PIC..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="relative w-full sm:w-40">
+                    <div className="relative w-full sm:w-44 flex-shrink-0">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><CalendarIcon className="h-4 w-4 text-gray-400" /></div>
                         <select
-                            className="block w-full pl-9 pr-8 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 sm:text-sm appearance-none"
+                            className="block w-full pl-9 pr-8 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm appearance-none"
                             value={dateFilter}
-                            onChange={(e) => setDateFilter(e.target.value)}
+                            onChange={(e) => {
+                                setDateFilter(e.target.value);
+                                if (e.target.value !== 'custom') {
+                                    setStartDate('');
+                                    setEndDate('');
+                                }
+                            }}
                         >
                             <option value="all">Semua Waktu</option>
                             <option value="today">Hari Ini</option>
                             <option value="week">Minggu Ini</option>
+                            <option value="month">Bulan Ini</option>
+                            <option value="custom">Pilih Tanggal</option>
                         </select>
                     </div>
                 </div>
             </div>
+
+            {dateFilter === 'custom' && (
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <span className="text-sm font-medium text-gray-600">Dari:</span>
+                        <input
+                            type="date"
+                            className="block w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 sm:text-sm"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <span className="text-sm font-medium text-gray-600">Sampai:</span>
+                        <input
+                            type="date"
+                            className="block w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 sm:text-sm"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            min={startDate}
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">

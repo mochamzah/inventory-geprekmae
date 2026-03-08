@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { AlertCircle, Package, TrendingDown, Loader2 } from "lucide-react";
 import Link from "next/link";
+import DashboardChart from "@/components/DashboardChart";
 
 export default function DashboardPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -53,6 +54,9 @@ export default function DashboardPage() {
           <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 animate-pulse"><AlertCircle className="h-6 w-6" /></div>
         </div>
       </div>
+
+      {/* Chart Section */}
+      <DashboardChart />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 col-span-1 p-6">
