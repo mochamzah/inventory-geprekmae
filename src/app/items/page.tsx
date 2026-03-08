@@ -26,6 +26,7 @@ export default function MasterItemsPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("");
 
     // Modal & Form State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,9 +59,13 @@ export default function MasterItemsPage() {
         setLoading(false);
     }
 
-    const filteredItems = items.filter((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredItems = items.filter((item) => {
+        const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = selectedCategory === "" || item.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
+
+    const categories = Array.from(new Set(items.map(item => item.category))).filter(Boolean).sort();
 
     const handleOpenModal = (item?: Item) => {
         if (item) {
@@ -159,6 +164,18 @@ export default function MasterItemsPage() {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
+                </div>
+                <div className="w-full sm:w-48">
+                    <select
+                        className="block w-full px-3 py-2 border border-gray-200 rounded-xl bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm transition-shadow"
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                    >
+                        <option value="">Semua Kategori</option>
+                        {categories.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </select>
                 </div>
                 <button
                     onClick={() => handleOpenModal()}
