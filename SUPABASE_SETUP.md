@@ -60,6 +60,14 @@ INSERT INTO items (name, category, unit, min_stock, current_stock) VALUES
 ('Cabai Domba', 'Sayuran', 'Kg', 2, 5.5),
 ('Minyak Goreng', 'Sembako', 'Liter', 10, 45),
 ('Box Takeaway', 'Packaging', 'Pcs', 100, 85);
+
+-- 4. Kebijakan Keamanan (RLS - Row Level Security)
+-- Jalankan ini agar aplikasi bisa menambah/mengedit data dari browser.
+ALTER TABLE items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Enable all for anon" ON items FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all for anon" ON transactions FOR ALL USING (true) WITH CHECK (true);
 ```
 
 ## 3. Konfigurasi Environment Variables

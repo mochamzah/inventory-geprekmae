@@ -19,6 +19,7 @@ export default function OutboundPage() {
     const [items, setItems] = useState<Item[]>([]);
     const [loadingItems, setLoadingItems] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [unitPrice, setUnitPrice] = useState<number | null>(null);
 
     const [formData, setFormData] = useState({
         item_id: "",
@@ -43,23 +44,34 @@ export default function OutboundPage() {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setSubmitting(true);
+    const fetchUnitPrice = async (itemId: string) => {
+        if (!itemId) {
+            setUnitPrice(null);
+            return;
+        }
 
-        // Ambil harga dari transaksi inbound terakhir untuk menghitung Nominal Beban
-        const { data: lastInbound } = await supabase
+        const { data } = await supabase
             .from('transactions')
             .select('price, quantity')
-            .eq('item_id', formData.item_id)
+            .eq('item_id', itemId)
             .eq('type', 'in')
             .order('timestamp', { ascending: false })
             .limit(1)
             .single();
 
+        if (data && data.quantity > 0 && (data.price || 0) > 0) {
+            setUnitPrice((data.price || 0) / data.quantity);
+        } else {
+            setUnitPrice(null);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmitting(true);
+
         let calculatedPrice = null;
-        if (lastInbound && lastInbound.quantity > 0 && lastInbound.price > 0) {
-            const unitPrice = lastInbound.price / lastInbound.quantity;
+        if (unitPrice && Number(formData.quantity) > 0) {
             calculatedPrice = unitPrice * Number(formData.quantity);
         }
 
@@ -86,6 +98,7 @@ export default function OutboundPage() {
                 notes: "",
                 pic: "",
             });
+            setUnitPrice(null);
         }
         setSubmitting(false);
     };
@@ -113,7 +126,10 @@ export default function OutboundPage() {
                                 <ItemSearchSelect
                                     items={items}
                                     selectedId={formData.item_id}
-                                    onSelect={(id, label) => setFormData((prev) => ({ ...prev, item_id: id, item_label: label }))}
+                                    onSelect={(id, label) => {
+                                        setFormData((prev) => ({ ...prev, item_id: id, item_label: label }));
+                                        fetchUnitPrice(id);
+                                    }}
                                     placeholder={loadingItems ? 'Memuat barang...' : 'Ketik untuk mencari barang...'}
                                     disabled={loadingItems}
                                 />
@@ -121,19 +137,32 @@ export default function OutboundPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Jumlah <span className="text-red-500">*</span></label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max={selectedItem?.current_stock}
-                                name="quantity"
-                                required
-                                placeholder="0.00"
-                                value={formData.quantity}
-                                onChange={handleChange}
-                                className="block w-full px-3 py-2.5 border border-gray-200 rounded-xl sm:text-sm text-gray-900"
-                            />
+                            <label className="block text-sm font-medium text-gray-700">Jumlah {selectedItem ? `(${selectedItem.unit})` : ""} <span className="text-red-500">*</span></label>
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max={selectedItem?.current_stock}
+                                    name="quantity"
+                                    required
+                                    placeholder="0.00"
+                                    value={formData.quantity}
+                                    onChange={handleChange}
+                                    className="block w-full px-3 py-2.5 border border-gray-200 rounded-xl sm:text-sm text-gray-900 pr-12"
+                                />
+                                {selectedItem && (
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <span className="text-gray-500 text-xs">{selectedItem.unit}</span>
+                                    </div>
+                                )}
+                            </div>
+                            {unitPrice && formData.quantity && (
+                                <p className="text-xs text-blue-600 font-medium pt-1">
+                                    Est. Harga: Rp {(unitPrice * Number(formData.quantity)).toLocaleString("id-ID")}
+                                    <span className="text-gray-400 font-normal ml-1">(@ Rp {Math.round(unitPrice).toLocaleString("id-ID")})</span>
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-2">

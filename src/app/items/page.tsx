@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Search, Plus, AlertCircle, Edit, Trash2, Loader2, X } from "lucide-react";
+import { Search, Plus, AlertCircle, Edit, Trash2, Loader2, X, History } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 interface Item {
@@ -27,6 +27,10 @@ export default function MasterItemsPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [historyItem, setHistoryItem] = useState<Item | null>(null);
+    const [itemHistory, setItemHistory] = useState<any[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
 
     // Modal & Form State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -57,6 +61,22 @@ export default function MasterItemsPage() {
         setItems(itemsRes.data || []);
         setTransactions(transRes.data || []);
         setLoading(false);
+    }
+
+    async function fetchItemHistory(item: Item) {
+        setLoadingHistory(true);
+        setHistoryItem(item);
+        setIsHistoryModalOpen(true);
+        const { data, error } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('item_id', item.id)
+            .order('timestamp', { ascending: false })
+            .limit(10);
+
+        if (error) console.error('Error fetching history:', error);
+        setItemHistory(data || []);
+        setLoadingHistory(false);
     }
 
     const filteredItems = items.filter((item) => {
@@ -112,23 +132,32 @@ export default function MasterItemsPage() {
             current_stock: Number(formData.current_stock)
         };
 
+        console.log("Submitting Master Item payload:", payload);
+
         let error;
         if (editingItem) {
+            console.log("Updating existing item ID:", editingItem.id);
             const { error: err } = await supabase
                 .from('items')
                 .update(payload)
                 .eq('id', editingItem.id);
             error = err;
         } else {
-            const { error: err } = await supabase
+            console.log("Inserting new item...");
+            const { data, error: err } = await supabase
                 .from('items')
-                .insert([payload]);
+                .insert([payload])
+                .select();
+
+            console.log("Insert result data:", data);
             error = err;
         }
 
         if (error) {
+            console.error("Supabase error detail:", error);
             toast.error("Gagal menyimpan: " + error.message);
         } else {
+            console.log("Save successful!");
             toast.success(editingItem ? "Barang berhasil diperbarui!" : "Barang baru berhasil ditambahkan!");
             handleCloseModal();
             fetchData();
@@ -227,18 +256,19 @@ export default function MasterItemsPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-2">
-                                                <span className={`text-sm font-medium ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>{item.current_stock} {item.unit}</span>
+                                                <span className={`text-sm font-medium ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>{Number(item.current_stock).toLocaleString("id-ID", { maximumFractionDigits: 2 })} {item.unit}</span>
                                                 {isLowStock && <AlertCircle className="h-4 w-4 text-red-500" />}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-gray-900 font-medium">{avgPrice > 0 ? `Rp ${Math.round(avgPrice).toLocaleString("id-ID")}` : "-"}</div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.min_stock} {item.unit}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{Number(item.min_stock).toLocaleString("id-ID", { maximumFractionDigits: 2 })} {item.unit}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end gap-3">
-                                                <button onClick={() => handleOpenModal(item)} className="text-gray-400 hover:text-blue-600 transition-colors"><Edit className="h-4 w-4" /></button>
-                                                <button onClick={() => handleDelete(item.id, item.name)} className="text-gray-400 hover:text-red-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
+                                                <button onClick={() => fetchItemHistory(item)} className="text-gray-400 hover:text-green-600 transition-colors" title="Riwayat"><History className="h-4 w-4" /></button>
+                                                <button onClick={() => handleOpenModal(item)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Edit"><Edit className="h-4 w-4" /></button>
+                                                <button onClick={() => handleDelete(item.id, item.name)} className="text-gray-400 hover:text-red-600 transition-colors" title="Hapus"><Trash2 className="h-4 w-4" /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -281,11 +311,11 @@ export default function MasterItemsPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-sm font-medium text-gray-700">Stok Awal</label>
-                                    <input type="number" name="current_stock" required value={formData.current_stock} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-red-500 outline-none" />
+                                    <input type="number" step="any" name="current_stock" required value={formData.current_stock} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-red-500 outline-none" />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-sm font-medium text-gray-700">Min. Stok</label>
-                                    <input type="number" name="min_stock" required value={formData.min_stock} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-red-500 outline-none" />
+                                    <input type="number" step="any" name="min_stock" required value={formData.min_stock} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-red-500 outline-none" />
                                 </div>
                             </div>
                             <div className="pt-4 flex gap-3">
@@ -295,6 +325,65 @@ export default function MasterItemsPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* History Modal */}
+            {isHistoryModalOpen && historyItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-100/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900">Riwayat: {historyItem.name}</h3>
+                                <p className="text-xs text-gray-500">Menampilkan 10 transaksi terakhir</p>
+                            </div>
+                            <button onClick={() => setIsHistoryModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+                        </div>
+                        <div className="p-0 max-h-[400px] overflow-y-auto">
+                            {loadingHistory ? (
+                                <div className="p-12 text-center">
+                                    <Loader2 className="h-8 w-8 text-green-500 animate-spin mx-auto mb-2" />
+                                    <p className="text-sm text-gray-500">Memuat riwayat...</p>
+                                </div>
+                            ) : itemHistory.length === 0 ? (
+                                <div className="p-12 text-center text-gray-500 text-sm">Belum ada transaksi untuk barang ini.</div>
+                            ) : (
+                                <table className="min-w-full divide-y divide-gray-100">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Waktu</th>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Tipe</th>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Qty</th>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">PIC</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {itemHistory.map((h) => (
+                                            <tr key={h.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-3 whitespace-nowrap text-xs text-gray-900">
+                                                    {new Date(h.timestamp).toLocaleString("id-ID", { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                </td>
+                                                <td className="px-6 py-3 whitespace-nowrap">
+                                                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase ${h.type === 'in' ? 'bg-green-100 text-green-700' : h.reason === 'Waste' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                        {h.type === 'in' ? 'Masuk' : h.reason || 'Keluar'}
+                                                    </span>
+                                                </td>
+                                                <td className={`px-6 py-3 whitespace-nowrap text-xs font-bold ${h.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {h.type === 'in' ? '+' : '-'}{h.quantity}
+                                                </td>
+                                                <td className="px-6 py-3 whitespace-nowrap text-xs text-gray-500">
+                                                    {h.pic}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 text-right">
+                            <button onClick={() => setIsHistoryModalOpen(false)} className="px-4 py-2 bg-white border rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">Tutup</button>
+                        </div>
                     </div>
                 </div>
             )}

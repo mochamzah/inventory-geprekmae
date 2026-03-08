@@ -73,9 +73,9 @@ export default function DashboardPage() {
                   <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                     <div>
                       <p className="font-medium text-gray-900">{item.name}</p>
-                      <p className="text-xs text-gray-500">Min: {item.min_stock} {item.unit}</p>
+                      <p className="text-xs text-gray-500">Min: {item.min_stock?.toLocaleString("id-ID", { maximumFractionDigits: 2 })} {item.unit}</p>
                     </div>
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${isCritical ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}`}>{item.current_stock} {item.unit}</div>
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${isCritical ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}`}>{item.current_stock?.toLocaleString("id-ID", { maximumFractionDigits: 2 })} {item.unit}</div>
                   </div>
                 )
               })
