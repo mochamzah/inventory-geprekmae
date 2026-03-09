@@ -301,6 +301,7 @@ export default function MasterItemsPage() {
                                         <option value="Sayuran">Sayuran</option>
                                         <option value="Sembako">Sembako</option>
                                         <option value="Packaging">Packaging</option>
+                                        <option value="Bumbu">Bumbu</option>
                                     </select>
                                 </div>
                                 <div className="space-y-1">
